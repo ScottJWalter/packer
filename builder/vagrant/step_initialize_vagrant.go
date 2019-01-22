@@ -25,15 +25,52 @@ var DEFAULT_TEMPLATE = `Vagrant.configure("2") do |config|
   config.vm.box = "<%= @box_name %>"
   {{ if ne .SyncedFolder "" -}}
   		config.vm.synced_folder "{{.SyncedFolder}}", "/vagrant"
-  {{ - else - }}
+  {{- else -}}
   		config.vm.synced_folder ".", "/vagrant", disabled: true
-  {{ - end}}
+  {{- end}}
 end`
 
 type VagrantfileOptions struct {
 	SyncedFolder string
 }
 
+func (s *StepInitializeVagrant) createInitializeCommand() (string, error) {
+	tplPath := filepath.Join(s.OutputDir, "packer-vagrantfile-template.erb")
+	templateFile, err := os.Create(tplPath)
+	templateFile.Chmod(0777)
+	if err != nil {
+		retErr := fmt.Errorf("Error creating vagrantfile %s", err.Error())
+		return "", retErr
+	}
+
+	var tpl *template.Template
+	if s.Template == "" {
+		// Generate vagrantfile template based on our default
+		tpl = template.Must(template.New("VagrantTpl").Parse(DEFAULT_TEMPLATE))
+	} else {
+		// Read in the template from provided file.
+		tpl, err = template.ParseFiles(s.Template)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	opts := &VagrantfileOptions{
+		SyncedFolder: s.SyncedFolder,
+	}
+
+	err = tpl.Execute(templateFile, opts)
+	if err != nil {
+		return "", err
+	}
+
+	abspath, err := filepath.Abs(tplPath)
+	if err != nil {
+		return "", err
+	}
+
+	return abspath, nil
+}
 func (s *StepInitializeVagrant) Run(_ context.Context, state multistep.StateBag) multistep.StepAction {
 	driver := state.Get("driver").(VagrantDriver)
 	ui := state.Get("ui").(packer.Ui)
@@ -57,36 +94,13 @@ func (s *StepInitializeVagrant) Run(_ context.Context, state multistep.StateBag)
 		initArgs = append(initArgs, "-m")
 	}
 
-	tplPath := filepath.Join(s.OutputDir, "packer-vagrantfile-template.erb")
-	templateFile, err := os.Create(tplPath)
-	if err != nil {
-		state.Put("error", fmt.Errorf("Error creating vagrantfile %s", err.Error()))
-		return multistep.ActionHalt
-	}
-
-	var tpl *template.Template
-	if s.Template == "" {
-		// Generate vagrantfile template based on our default
-		tpl = template.Must(template.New("VagrantTpl").Parse(DEFAULT_TEMPLATE))
-	} else {
-		// Read in the template from provided file.
-		tpl, err = template.ParseFiles(s.Template)
-		if err != nil {
-			state.Put("error", err)
-			return multistep.ActionHalt
-		}
-	}
-
-	opts := &VagrantfileOptions{
-		SyncedFolder: s.SyncedFolder,
-	}
-
-	err = tpl.Execute(templateFile, opts)
+	tplPath, err := s.createInitializeCommand()
 	if err != nil {
 		state.Put("error", err)
 		return multistep.ActionHalt
 	}
-	initArgs = append(initArgs, "--template", s.Template)
+
+	initArgs = append(initArgs, "--template", tplPath)
 
 	os.Chdir(s.OutputDir)
 	// Call vagrant using prepared arguments
