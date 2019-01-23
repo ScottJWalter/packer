@@ -177,6 +177,7 @@ func (b *Builder) Run(ui packer.Ui, hook packer.Hook, cache packer.Cache) (packe
 		},
 		&StepUp{
 			b.config.TeardownMethod,
+			b.config.Provider,
 		},
 		&StepSSHConfig{},
 		&communicator.StepConnect{

@@ -17,7 +17,7 @@ type VagrantDriver interface {
 	Add([]string) error
 
 	// Calls "vagrant up"
-	Up() (string, string, error)
+	Up([]string) (string, string, error)
 
 	// Calls "vagrant halt"
 	Halt() error

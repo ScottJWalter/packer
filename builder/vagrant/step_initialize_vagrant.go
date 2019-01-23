@@ -22,7 +22,7 @@ type StepInitializeVagrant struct {
 }
 
 var DEFAULT_TEMPLATE = `Vagrant.configure("2") do |config|
-  config.vm.box = "<%= @box_name %>"
+  config.vm.box = "{{.BoxName}}"
   {{ if ne .SyncedFolder "" -}}
   		config.vm.synced_folder "{{.SyncedFolder}}", "/vagrant"
   {{- else -}}
@@ -32,6 +32,7 @@ end`
 
 type VagrantfileOptions struct {
 	SyncedFolder string
+	BoxName      string
 }
 
 func (s *StepInitializeVagrant) createInitializeCommand() (string, error) {
@@ -57,6 +58,7 @@ func (s *StepInitializeVagrant) createInitializeCommand() (string, error) {
 
 	opts := &VagrantfileOptions{
 		SyncedFolder: s.SyncedFolder,
+		BoxName:      s.SourceBox,
 	}
 
 	err = tpl.Execute(templateFile, opts)

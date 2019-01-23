@@ -28,8 +28,8 @@ func (d *Vagrant_2_2_Driver) Add(args []string) error {
 }
 
 // Calls "vagrant up"
-func (d *Vagrant_2_2_Driver) Up() (string, string, error) {
-	stdout, stderr, err := d.vagrantCmd([]string{"up"}...)
+func (d *Vagrant_2_2_Driver) Up(args []string) (string, string, error) {
+	stdout, stderr, err := d.vagrantCmd(append([]string{"up"}, args...)...)
 	return stdout, stderr, err
 }
 
@@ -47,7 +47,7 @@ func (d *Vagrant_2_2_Driver) Suspend() error {
 
 // Calls "vagrant destroy"
 func (d *Vagrant_2_2_Driver) Destroy() error {
-	_, _, err := d.vagrantCmd([]string{"destroy"}...)
+	_, _, err := d.vagrantCmd([]string{"destroy", "-f"}...)
 	return err
 }
 
